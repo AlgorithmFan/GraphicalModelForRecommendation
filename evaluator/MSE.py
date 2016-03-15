@@ -10,7 +10,7 @@ class MSE:
         pass
 
     @staticmethod
-    def ComputeRootMeanSquareError(recommendation, testRatings):
+    def ComputeMeanSquareError(recommendation, testRatings):
         ''''''
         if (not isspmatrix_dok(recommendation)) or (not isspmatrix_dok(testRatings)):
             assert('The recommendation matrix or test ratings is not a sparse matrix.')
