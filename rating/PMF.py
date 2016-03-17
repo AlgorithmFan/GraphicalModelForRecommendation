@@ -6,17 +6,17 @@ from scipy.sparse import dok_matrix
 from Recommender import Recommender
 
 class ProbabilisticMatrixFactorization(Recommender):
-    def __init__(self, trainMatrix, testMatrix, configHandle):
-        super.__init__(trainMatrix, testMatrix, configHandle)
+    def __init__(self, trainMatrix, testMatrix, configHandler):
+        super.__init__(trainMatrix, testMatrix, configHandler)
 
     def initModel(self):
         self.numUsers, self.numItems = self.trainMatrix.shape()
         self.prediction = dok_matrix((self.numUsers, self.numItems))
-        self.MAX_Iterations = int(self.configHandle.getParameter('PMF', 'MAX_Iterations'))
-        self.numFactors = int(self.configHandle.getParameter('PMF', 'numFactors'))
-        self.learnRate = float(self.configHandle.getParameter('PMF', 'learning_rate'))
-        self.regU = float(self.configHandle.getParameter('PMF', 'regU'))
-        self.regI = float(self.configHandle.getParameter('PMF', 'regI'))
+        self.MAX_Iterations = int(self.configHandler.getParameter('PMF', 'MAX_Iterations'))
+        self.numFactors = int(self.configHandler.getParameter('PMF', 'numFactors'))
+        self.learnRate = float(self.configHandler.getParameter('PMF', 'learning_rate'))
+        self.regU = float(self.configHandler.getParameter('PMF', 'regU'))
+        self.regI = float(self.configHandler.getParameter('PMF', 'regI'))
 
         self.P = np.random.normal(0, 1, size=(self.numUsers, self.numFactors))
         self.Q = np.random.normal(0, 1, size=(self.numItems, self.numFactors))
