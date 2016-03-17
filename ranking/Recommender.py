@@ -3,10 +3,6 @@
 
 from scipy.sparse import dok_matrix
 
-from evaluator import MAE, MSE
-from evaluator.Predict import RMSE
-
-
 class Recommender:
     def __ini__(self, trainMatrix, testMatrix, configHandler):
         self.trainMatrix = trainMatrix
@@ -25,11 +21,7 @@ class Recommender:
         pass
 
     def evaluate(self):
-        mae = MAE.ComputeMeanAbsoluteError(self.prediction, self.testMatrix)
-        mse = MSE.ComputeMeanSquareError(self.prediction, self.testMatrix)
-        rmse = RMSE.ComputeRootMeanSquareError(self.prediction, self.testMatrix)
-        evaluation = {'MAE': mae, 'MSE': mse, 'RMSE': rmse}
-        return evaluation
+        pass
 
     def execute(self):
         self.initModel()

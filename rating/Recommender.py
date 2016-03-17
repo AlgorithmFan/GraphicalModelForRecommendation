@@ -2,10 +2,7 @@
 #coding:utf-8
 
 from scipy.sparse import dok_matrix
-
-from evaluator import MAE, MSE
-from evaluator.Predict import RMSE
-
+from evaluator.Predict import RMSE, MAE, MSE
 
 class Recommender:
     def __ini__(self, trainMatrix, testMatrix, configHandler):
