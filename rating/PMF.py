@@ -3,7 +3,6 @@
 
 import numpy as np
 from scipy.sparse import dok_matrix
-from util import readConfig
 from Recommender import Recommender
 
 class ProbabilisticMatrixFactorization(Recommender):
