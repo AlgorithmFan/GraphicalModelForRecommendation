@@ -27,8 +27,13 @@ class BayesianProbabilisticMatrixFactorization(Recommender):
 
 
     def buildModel(self):
-        pass
+
+
+
+        for u, i in self.testMatrix.keys():
+            rate = self.testMatrix.get((u, i))
+            self.prediction[u, i] = self.predict(u, i)
 
 
     def predict(self, u, i):
-        pass
+        return np.sum(self.P[u, :] * self.Q[i, :])
