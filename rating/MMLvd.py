@@ -3,7 +3,7 @@
 
 from Recommender import Recommender
 from scipy.sparse import dok_matrix
-
+import numpy as np
 
 class MMLvd(Recommender):
     def __init__(self, trainMatrix, testMatrix, configHandler):
@@ -28,4 +28,10 @@ class MMLvd(Recommender):
         self.Q = np.random.normal(0, 1, size=(self.numItems, self.numFactors))
 
     def buildModel(self):
+        pass
+
+    def EStep(self):
+        pass
+
+    def MStep(self):
         pass
