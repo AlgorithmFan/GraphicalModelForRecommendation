@@ -9,4 +9,23 @@ class AspectModel(Recommender):
 
 
     def initModel(self):
+        ''''''
+        pass
+
+    def buildModel(self):
+        ''''''
+        pass
+
+
+    def eStep(self):
+        ''''''
+        pass
+
+
+    def mStep(self):
+        ''''''
+        pass
+
+    def predict(self):
+        ''''''
         pass
