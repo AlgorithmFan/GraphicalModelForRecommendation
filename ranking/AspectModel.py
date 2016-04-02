@@ -6,6 +6,11 @@ from scipy.sparse import dok_matrix
 from Recommender import Recommender
 from util import normalize
 
+'''
+Hofmann, 1999, Latent class models for collaborative filtering
+
+'''
+
 class AspectModel(Recommender):
     def __init__(self, trainMatrix, testMatrix, configHandler):
         super.__init__(trainMatrix, testMatrix, configHandler)
@@ -47,10 +52,6 @@ class AspectModel(Recommender):
             else:
                 oldLikelihood = likelihood
 
-        # Prediction
-
-
-
 
     def eStep(self):
         ''''''
@@ -75,6 +76,20 @@ class AspectModel(Recommender):
             result += np.log(self.Q[user_id, item_id, :] * (logX[user_id, :] + logY[item_id, :] + logZ))
         return  result / len(self.trainMatrix.keys())
 
-    def predict(self, user_id, item_id):
+    def RegularizedLikelihood(self):
+        ''''''
+        result = 0.00
+        logX = np.log(self.X)
+        logY = np.log(self.Y)
+        logZ = np.log(self.Z)
+        logQ = np.log(self.Q)
+        for user_id, item_id in self.trainMatrix.keys():
+            result += np.sum(self.Q[user_id, item_id, :] * (logX[user_id, :] + logY[item_id, :] + logZ))
+            result += np.sum(self.Q[user_id, item_id, :] * logQ[user_id, item_id, :])
+        return  result / len(self.trainMatrix.keys())
+
+
+    def ranking(self, user_id, item_id):
         ''''''
         return np.sum(self.X[user_id, :] * self.Y[item_id, :] * self.Z)
+
