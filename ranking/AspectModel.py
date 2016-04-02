@@ -24,13 +24,13 @@ class AspectModel(Recommender):
         self.numFactors = int(self.configHandler.getParameter('AspectModel', 'numFactors'))
         self.threshold = float(self.configHandler.getParameter('AspectModel', 'threshold'))
 
-        self.X = np.random.normal(0, 1, size=(self.numUsers, self.numFactors))      #  P(x|z)
+        self.X = np.random.uniform(0, 1, size=(self.numUsers, self.numFactors))      #  P(x|z)
         self.X = normalize(self.X)
 
-        self.Y = np.random.normal(0, 1, size=(self.numItems, self.numFactors))      #  P(y|z)
+        self.Y = np.random.uniform(0, 1, size=(self.numItems, self.numFactors))      #  P(y|z)
         self.Y = normalize(self.Y)
 
-        self.Z = np.random.normal(0, 1, size=self.numFactors)                       #  P(z)
+        self.Z = np.random.uniform(0, 1, size=self.numFactors)                       #  P(z)
         self.Z = normalize(self.Z)
 
         self.Q = np.zeros((self.numUsers, self.numFactors, self.numItems))   # P(z|x,y)

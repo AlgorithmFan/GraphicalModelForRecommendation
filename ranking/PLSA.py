@@ -16,10 +16,10 @@ class PLSA(Recommender):
         self.MAX_Iterations = int(self.configHandler.getParameter('PLSA', 'MAX_Iterations'))
         self.numFactors = int(self.configHandler.getParameter('PLSA', 'numFactors'))
 
-        self.X = np.random.normal(0, 1, size=(self.numUsers, self.numFactors))      #  P(z|x)
+        self.X = np.random.uniform(0, 1, size=(self.numUsers, self.numFactors))      #  P(z|x)
         self.X = normalize(self.X)
 
-        self.Y = np.random.normal(0, 1, size=(self.numItems, self.numFactors))      #  P(y|z)
+        self.Y = np.random.uniform(0, 1, size=(self.numItems, self.numFactors))      #  P(y|z)
         self.Y = normalize(self.Y)
 
         self.Q = np.zeros((self.numUsers, self.numFactors, self.numItems))   # P(y,z|x)
