@@ -2,3 +2,4 @@
 #coding:utf-8
 
 from readConfig import *
+from normalization import normalize
