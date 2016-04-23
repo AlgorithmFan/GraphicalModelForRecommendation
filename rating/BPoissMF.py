@@ -62,8 +62,13 @@ class BPoissMF(Recommender):
             self.beta[i, :] = gammaRnd(self.c, self.eta[i])
 
         # Init z
+        self.zs = np.zeros((self.numUsers, self.numItems, self.numFactors))
         for user_id, item_id in self.trainMatrix.keys():
-            p = np.sum(self.theta[user_id, :] * self.beta[item_id, :])
+            p = self.theta[user_id, :] * self.beta[item_id, :]
+            p /= np.sum(p)
+            self.zs[user_id, item_id, :] = np.random.multinomial(self.trainMatrix[user_id, item_id], p)
+
+
 
 
 
