@@ -13,11 +13,11 @@ from scipy.sparse import dok_matrix
 from util import normalize
 
 
-class BNPRec(Recommender):
+class BNPoissMF(Recommender):
     def __init__(self, trainMatrix, testMatrix, configHandler):
         Recommender.__init__(trainMatrix, testMatrix, configHandler)
 
 
 
 if __name__ == '__main__':
-    bnprec = BNPRec()
+    bnprec = BNPoissMF()
