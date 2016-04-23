@@ -68,6 +68,51 @@ class BPoissMF(Recommender):
             p /= np.sum(p)
             self.zs[user_id, item_id, :] = np.random.multinomial(self.trainMatrix[user_id, item_id], p)
 
+    def sample(self, ):
+        ''''''
+        self.loglikelihood = []
+        for curr_iter in xrange(self.MAX_Iterations):
+            'Gibbs Sampling.'
+            randUsers = range(self.numUsers)
+            randTopics = range(self.numFactors)
+            randItems = range(self.numItems)
+
+            # Sample theta
+            shuffle(randUsers)
+            for user_id in randUsers:
+                shuffle(randTopics)
+                for topic_id in randTopics:
+                    self.theta[user_id, topic_id] = gammaRnd(self.a + np.sum(self.zs[user_id, :, topic_id]),
+                                                             self.xi[user_id] + np.sum(self.beta[:, topic_id]))
+
+            # Sample beta
+            shuffle(randItems)
+            for item_id in randItems:
+                shuffle(randTopics)
+                for topic_id in randTopics:
+                    self.beta[item_id, topic_id] = gammaRnd(self.c + np.sum(self.zs[:, item_id, topic_id]),
+                                                            self.eta[item_id] + np.sum(self.theta[:, topic_id]))
+
+            # Sample xi
+            shuffle(randUsers)
+            for user_id in randUsers:
+                self.xi[user_id] = gammaRnd(self.ap + self.numFactors*self.a, self.b + self.theta[user_id, :].sum())
+
+            # Sample eta
+            shuffle(randItems)
+            for item_id in randItems:
+                self.eta[item_id] = gammaRnd(self.cp + self.numFactors*self.c, self.d + self.beta[item_id, :].sum())
+
+            # Sample zs
+            nonzeros = self.trainMatrix.keys()
+            randNonZeros = shuffle(len(nonzeros))
+            for pair_id in randNonZeros:
+                user_id, item_id = nonzeros[pair_id]
+                p = self.theta[user_id, :] * self.beta[item_id, :]
+                p /= p.sum()
+                self.zs[user_id, item_id, :] = np.random.multinomial(self.trainMatrix[user_id, item_id], p)
+
+
 
 
 
