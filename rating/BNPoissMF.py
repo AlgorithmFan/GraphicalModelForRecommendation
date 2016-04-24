@@ -3,6 +3,8 @@
 
 '''
 Paper: Prem Gopalan, Francisco J.R. Ruiz, et al. Bayesian Non-parameter Poisson Factorization for Recommendation Systems
+github: https://github.com/premgopalan/hgaprec/tree/master/src
+
 Author: Haidong Zhang
 Date: April 16, 2016
 '''
