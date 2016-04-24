@@ -4,6 +4,7 @@
 '''
 Paper: Prem Gopalan, et al. Scalable Recommendation with Poisson Factorization.
 Github: https://github.com/mertterzihan/PMF/blob/master/Code/PoissonFactorization.py#L47
+http://www.hongliangjie.com/2015/08/17/poisson-matrix-factorization/
 
 Author: Haidong Zhang
 Date: April 24, 2016
