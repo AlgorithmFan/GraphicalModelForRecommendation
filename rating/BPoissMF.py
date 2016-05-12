@@ -114,13 +114,5 @@ class BPoissMF(Recommender):
                 self.zs[user_id, item_id, :] = np.random.multinomial(self.trainMatrix[user_id, item_id], p)
 
 
-
-
-
-
-
-
-
-
 if __name__ == '__main__':
     bnprec = BPoissMF()
