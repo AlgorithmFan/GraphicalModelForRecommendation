@@ -20,6 +20,21 @@ class BNPoissMF(Recommender):
         Recommender.__init__(trainMatrix, testMatrix, configHandler)
 
 
+    def initModel(self):
+        pass
+
+    def buildModels(self):
+        pass
+
+    def updateUserPrior(self):
+        pass
+
+    def updateItemPrior(self):
+        pass
+
+    def GammaPoisson(self):
+        pass
+
 
 if __name__ == '__main__':
     bnprec = BNPoissMF()
