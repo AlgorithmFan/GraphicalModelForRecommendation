@@ -58,7 +58,10 @@ class BNPoissMF(Recommender):
         pass
 
     def initUserScalingParameters(self):
-        pass
+        ''' initial equations for the user scaling parameters gamma_u0 and gamma_u1
+
+        '''
+
 
 
     def initStickProportions(self):
