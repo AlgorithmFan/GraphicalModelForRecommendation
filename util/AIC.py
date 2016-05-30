@@ -18,12 +18,12 @@ if __name__ == '__main__':
     numStates = 20
     numItems = 1621
     numParameters = hmm(numStates, numItems)
-    print 'HMM: {}'.format(calculateAIC(numParameters, -2434502))
+    print 'HMM: {}'.format(calculateAIC(numParameters, -2815350))
 
     numStates = 30
     numItems = 1621
     numParameters = hmm(numStates, numItems)
-    print 'HMM: {}'.format(calculateAIC(numParameters, -2395577))
+    print 'HMM: {}'.format(calculateAIC(numParameters, -2761384))
 
     numParameters = ihmm(numStates, numItems)
     print 'IHMM: {}'.format(calculateAIC(numParameters, -2337670))

@@ -11,6 +11,7 @@ Date: April 16, 2016
 
 from Recommender import Recommender
 import numpy as np
+from numpy import log, sqrt
 from scipy.sparse import dok_matrix
 from util import normalize
 
@@ -64,6 +65,8 @@ class BNPoissMF(Recommender):
 
 
 
+
+
     def initStickProportions(self):
         ''' The update equations for the stick proportions tau_uk can be obtained by taking the derivative of the objective function with respect to tau_uk
 
@@ -87,6 +90,14 @@ class BNPoissMF(Recommender):
     def GammaPoisson(self):
         pass
 
+    def solveQuadratic(self, a, b, c):
+        '''
+        '''
+        s1 = (-b + sqrt(b*b - 4*a*c)) / (2*a)
+        s2 = (-b - sqrt(b*b - 4*a*c)) / (2*a)
+
+        if s1 > .0 and s1 <= 1.0 and s2 > .0 and s2 <= 1.0:
+            pass
 
 if __name__ == '__main__':
     bnprec = BNPoissMF()
