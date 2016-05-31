@@ -14,11 +14,14 @@ import numpy as np
 from numpy import log, sqrt
 from scipy.sparse import dok_matrix
 from util import normalize
+from util import Logger
 
+THRESHOLD = 1e-30
 
 class BNPoissMF(Recommender):
     def __init__(self, trainMatrix, testMatrix, configHandler):
         Recommender.__init__(trainMatrix, testMatrix, configHandler)
+        self.logger = Logger('BNPoissMF.log')
 
 
     def initModel(self):
@@ -54,6 +57,9 @@ class BNPoissMF(Recommender):
 
         self.z = np.zeros((self.numUsers, self.numItems))
 
+        self.pi = np.zeros((self.numUsers, self.numItems))
+        self.logPi = np.zeros((self.numUsers, self.numItems))
+
 
     def buildModels(self):
         pass
@@ -66,11 +72,19 @@ class BNPoissMF(Recommender):
 
 
 
-
     def initStickProportions(self):
         ''' The update equations for the stick proportions tau_uk can be obtained by taking the derivative of the objective function with respect to tau_uk
 
         '''
+        self.nu = 0.001 * np.random.random((self.numUsers, self.numFactors))
+
+
+    def computePi(self):
+        ''' Equation (10)
+
+        '''
+
+
 
     def initItemWeights(self):
         pass
@@ -97,7 +111,34 @@ class BNPoissMF(Recommender):
         s2 = (-b - sqrt(b*b - 4*a*c)) / (2*a)
 
         if s1 > .0 and s1 <= 1.0 and s2 > .0 and s2 <= 1.0:
-            pass
+            self.logger.error('s1 %f and s2 %f are out of range in solve_quadratic()' % (s1, s2))
+            self.logger.error('a = %.5f, b = %.5f, c = %.5f\n' % (a, b, c))
+
+            if s1 < s2:
+                return s1 + THRESHOLD
+            else:
+                return s2 + THRESHOLD
+
+        if s1 > .0 and s1 <= 1.0:
+            return s1
+
+        if s2 > .0 and s1 <= 1.0:
+            return s2
+
+        if np.abs(s1 - .0) < THRESHOLD:
+            return THRESHOLD
+
+        if np.abs(1.0 - s1) < THRESHOLD:
+            return 1.0 - THRESHOLD
+
+        if np.abs(s2 - .0) < THRESHOLD:
+            return THRESHOLD
+
+        if np.abs(s2 - 1.0) < THRESHOLD:
+            return 1.0 - THRESHOLD
+
+        self.logger.error('WARNING: s1 %.10f and s2 %.10f are out of range in solve_quadratic()' % (s1, s2))
+        return s1
 
 if __name__ == '__main__':
     bnprec = BNPoissMF()

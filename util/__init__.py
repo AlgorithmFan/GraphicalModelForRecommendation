@@ -3,3 +3,4 @@
 
 from readConfig import *
 from normalization import normalize
+from logger import *
