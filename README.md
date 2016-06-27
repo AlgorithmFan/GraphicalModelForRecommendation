@@ -15,3 +15,7 @@ https://github.com/dawenl/nbmf/blob/master/code/nbmf.py
 
 Kalman Filter
 http://link.springer.com/article/10.1186/1687-1847-2012-172#Abs1
+
+
+
+https://www.cs.princeton.edu/~blei/topicmodeling.html

@@ -4,7 +4,7 @@
 from scipy.sparse import dok_matrix
 
 class Recommender:
-    def __ini__(self, trainMatrix, testMatrix, configHandler):
+    def __init__(self, trainMatrix, testMatrix, configHandler):
         self.trainMatrix = trainMatrix
         self.testMatrix = testMatrix
         self.configHandler = configHandler
