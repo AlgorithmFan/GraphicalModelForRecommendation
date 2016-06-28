@@ -26,5 +26,25 @@ class CTR(Recommender):
         self.U = np.zeros((self.numUsers, self.numFactors))
         self.V = np.zeros((self.numItems, self.numFactors))
 
-    def buildModel(self):
+    def buildModel(self, corpus):
+        '''
+        corpus: document * words.
+        '''
+
+        # Update U
+
+
+
+        # Update V
+
+
+
+
+        # Update theta
+
+
+
+
+    def predict(self):
         ''''''
+        
