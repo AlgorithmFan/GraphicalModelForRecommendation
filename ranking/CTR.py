@@ -14,7 +14,6 @@ class CTR(Recommender):
     def __init__(self, trainMatrix, testMatrix, configHandler):
         super.__init__(trainMatrix, testMatrix, configHandler)
 
-
     def initModel(self):
         ''''''
         self.numUsers, self.numItems = self.trainMatrix.shape()
