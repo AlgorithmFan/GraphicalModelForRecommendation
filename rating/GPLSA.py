@@ -5,7 +5,7 @@
 Gausian Probabilistic Latent Semantic Analysis
 '''
 
-from Recommender import Recommender
+from graphicalrecommender import Recommender
 
 class GPLSA(Recommender):
     ''''''

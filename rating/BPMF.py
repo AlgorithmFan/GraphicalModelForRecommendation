@@ -4,14 +4,35 @@
 from scipy.sparse import dok_matrix
 import numpy as np
 
-from Recommender import Recommender
+from graphicalrecommender import Recommender
 
 class BayesianProbabilisticMatrixFactorization(Recommender):
     '''
     Bayesian Probabilistic Matrix Factorization.
     '''
-    def __init__(self, trainMatrix, testMatrix, configHandler):
-        super.__init__(trainMatrix, testMatrix, configHandler)
+    def __init__(self, train_matrix, test_matrix, config_handler):
+        super.__init__(train_matrix, test_matrix, config_handler)
+
+    def _read_config(self):
+        self.max_iterations = self.config_handler.get_parameter_int('BPMF', 'max_iterations')
+        self.num_factors = self.config_handler.get_parameter_int('BPMF', 'num_factors')
+
+        self.user_normal_dist_mu0 = self.config_handler.get_parameter_float('BPMF', 'user_normal_dist_mu0')
+        self.user_Wishart_dist_nu0 = self.config_handler.get_parameter_float('BPMF', 'user_Wishart_dist_nu0')
+        self.user_Wishart_dist_W0 = self.config_handler.get_parameter_float('BPMF', 'user_Wishart_dist_W0')
+
+        self.item_normal_dist_mu0 = self.config_handler.get_parameter_float('BPMF', 'item_normal_dist_mu0')
+        self.item_Wishart_dist_nu0 = self.config_handler.get_parameter_float('BPMF', 'item_Wishart_dist_nu0')
+        self.item_Wishart_dist_W0 = self.config_handler.get_parameter_float('BPMF', 'item_Wishart_dist_W0')
+
+    def _init_model(self):
+        self.num_users, self.num_items = self.train_matrix.shape()
+
+
+
+
+
+
 
     def initModel(self):
         self.numUsers, self.numItems = self.trainMatrix.shape()

@@ -3,7 +3,7 @@
 
 import numpy as np
 from scipy.sparse import dok_matrix
-from Recommender import Recommender
+from graphicalrecommender import Recommender
 
 class ProbabilisticMatrixFactorization(Recommender):
     def __init__(self, trainMatrix, testMatrix, configHandler):
