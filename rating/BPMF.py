@@ -15,103 +15,62 @@ class BayesianProbabilisticMatrixFactorization(Recommender):
 
     def _read_config(self):
         self.max_iterations = self.config_handler.get_parameter_int('BPMF', 'max_iterations')
-        self.num_factors = self.config_handler.get_parameter_int('BPMF', 'num_factors')
+        self.factor_num = self.config_handler.get_parameter_int('BPMF', 'num_factors')
 
         self.user_normal_dist_mu0 = self.config_handler.get_parameter_float('BPMF', 'user_normal_dist_mu0')
-        self.user_Wishart_dist_nu0 = self.config_handler.get_parameter_float('BPMF', 'user_Wishart_dist_nu0')
-        self.user_Wishart_dist_W0 = self.config_handler.get_parameter_float('BPMF', 'user_Wishart_dist_W0')
+        self.user_normal_dist_beta0 = self.config_handler.get_parameter_float('BPMF', 'user_normal_dist_beta0')
 
         self.item_normal_dist_mu0 = self.config_handler.get_parameter_float('BPMF', 'item_normal_dist_mu0')
-        self.item_Wishart_dist_nu0 = self.config_handler.get_parameter_float('BPMF', 'item_Wishart_dist_nu0')
-        self.item_Wishart_dist_W0 = self.config_handler.get_parameter_float('BPMF', 'item_Wishart_dist_W0')
+        self.item_normal_dist_beta0 = self.config_handler.get_parameter_flaot('BPMF', 'item_normal_dist_beta0')
 
     def _init_model(self):
-        self.num_users, self.num_items = self.train_matrix.shape()
+        self.user_num, self.item_num = self.train_matrix.shape()
+        self.user_factors = np.random.normal(0, 1, size = (self.user_num, self.factor_num))
+        self.item_factors = np.random.normal(0, 1, size = (self.user_num, self.factor_num))
 
+        self.user_normal_dist_mu0 = np.zeros(self.factor_num, np.float) + self.user_normal_dist_mu0
+        self.user_Wishart_dist_W0 = np.eye(np.factor_num)
+        self.user_Wishart_dist_nu0 = self.factor_num
 
+        self.item_normal_dist_mu0 = np.zeros(self.factor_num, np.float) + self.item_normal_dist_mu0
+        self.item_Wishart_dist_W0 = np.eye(np.factor_num)
+        self.item_Wishart_dist_nu0 = self.factor_num
 
+    def _build_model(self):
 
+        for i in range(self.max_iterations):
+            user_factors_mu, user_factors_variance = self._sampling_hyperprameters(self.user_factors, self.user_normal_dist_mu0, self.user_Wishart_dist_nu0, self.user_Wishart_dist_W0)
+            item_factors_mu, item_factors_variance = self._sampling_hyperprameters(self.item_factors, self.item_normal_dist_mu0, self.item_Wishart_dist_nu0, self.item_Wishart_dist_W0)
 
+            for user_id in range(self.user_num):
+                self.user_factors[user_id] = self._update_parameters(self.train_matrix.getrow(user_id), user_factors_mu, user_factors_variance)
 
+            for item_id in range(self.item_num):
+                self.item_factors[item_id] = self._update_parameters(self.train_matrix.getcol(item_id), item_factors_mu, item_factors_variance)
 
-    def initModel(self):
-        self.numUsers, self.numItems = self.trainMatrix.shape()
-        self.prediction = dok_matrix((self.numUsers, self.numItems))
-        self.MAX_Iterations = int(self.configHandler.getParameter('BPMF', 'MAX_Iterations'))
-        self.numFactors = int(self.configHandler.getParameter('BPMF', 'numFactors'))
+    def _sampling_hyperprameters(self, factors, normal_dist_mu0, normal_dist_beta0, Wishart_dist_nu0, Wishart_dist_W0):
+        num_N = factors.shape[0]
+        mean_U = np.mean(factors, axis = -1)
+        variance_S = np.cov(factors, bias=1)
+        mu0_minus_factors = normal_dist_mu0 - factors
+        W0 = np.inv(Wishart_dist_W0) + num_N * variance_S + normal_dist_beta0 * num_N / (normal_dist_beta0 + num_N) * np.dot(mu0_minus_factors, mu0_minus_factors.transpose())
+        W0_post = np.inv(W0)
+        mu_post = (normal_dist_beta0 * normal_dist_mu0 + num_N * mean_U) / (normal_dist_beta0 + num_N)
+        beta_post = (normal_dist_beta0 + num_N)
+        nu_post = Wishart_dist_nu0 + num_N
+        mu, variance_Sigma = self._sampling_normal_Wishart(mu_post, beta_post, W0_post, nu_post)
+        return mu, variance_Sigma
 
-        self.beta0 = float(self.configHandler.getParameter('BPMF', 'beta0'))
-        self.nu0 = float(self.configHandler.getParameter('BPMF', 'nu0'))
-        self.wh0 = np.eye(self.numFactors)
+    def _update_parameters(self, ratings, factors_mu, factors_variance):
+        pass
 
-        self.learnRate = float(self.configHandler.getParameter('BPMF', 'learning_rate'))
-        self.regU = float(self.configHandler.getParameter('BPMF', 'regU'))
-        self.regI = float(self.configHandler.getParameter('BPMF', 'regI'))
-
-        self.P = np.random.normal(0, 1, size=(self.numUsers, self.numFactors))
-        self.Q = np.random.normal(0, 1, size=(self.numItems, self.numFactors))
-
-
-    def buildModel(self):
-
-        # Hyper-Parameters of Users
-        mu0_U = np.zeros(self.numFactors)
-        wh0_U = np.eye(self.numFactors)
-
-        # Hyper-Parameters of Items
-        mu0_V = np.zeros(self.numFactors)
-        wh0_V = np.eye(self.numFactors)
-
-        for i in range(self.MAX_Iterations):
-            # Sampling from U
-            mu_U, Alpha_U = self.generateHyperParameters(mu0_U, wh0_U, self.P)
-
-            # Sampling from V
-            mu_V, Alpha_V = self.generateHyperParameters(mu0_V, wh0_V, self.Q)
-
-            for gibbs in range(2):
-                self.P = self.gibbsSampling(mu_U, Alpha_U, self.P, self.Q)
-                self.Q = self.gibbsSampling(mu_V, Alpha_V, self.Q, self.P)
-
-            # calculate the loss
-            loss = 0
-            for u, i in self.trainMatrix.keys():
-                rating = self.trainMatrix.get((u, i))
-                rating_bar = self.predict(u, i)
-                error = rating - rating_bar
-                loss += error ** 2
-
-        for u, i in self.testMatrix.keys():
-            rate = self.testMatrix.get((u, i))
-            self.prediction[u, i] = self.predict(u, i)
-
-
-    def generateHyperParameters(self, mu0, wh0, FeatrueMatrix):
-        '''
-        FeatrueMatrix: P or Q.
-        '''
-        N = FeatrueMatrix.shape[0]
-        beta0_asterisk = self.beta0 + self.numFactors
-        nu0_asterisk = self.nu0 + N
-        mean = np.mean(FeatrueMatrix, axis=0)
-
-        S_bar = np.cov(FeatrueMatrix.transpose())
-        mu0_asterisk = (self.beta0 * mu0 + N * mean) / (self.beta0 + N)
-        wh0_asterisk = np.linalg.inv(wh0) + N * S_bar + self.beta0 * N / beta0_asterisk * np.outer(mean, mean)
-
-        Alpha = self.wishart(wh0_asterisk, nu0_asterisk)
-
-        sigma = np.linalg.cholesky(np.linalg.inv(beta0_asterisk * Alpha))
-        sigma = np.linalg.inv(sigma)
-        mu = np.ranom.normal(0, 1, self.numFactors)
-        mu = sigma * mu + mu0_asterisk
-        return mu, Alpha
 
     def gibbsSampling(mu, Alpha, userFeatrue, itemFeature):
         pass
 
-    def wishart(self, scale, df):
+    def _sampling_normal_Wishart(self, mu0, variance0, W0, nu0):
         pass
 
     def predict(self, u, i):
-        return np.sum(self.P[u, :] * self.Q[i, :])
+        return np.sum(self.user_factors[u, :] * np.item_factors[i, :])
+
