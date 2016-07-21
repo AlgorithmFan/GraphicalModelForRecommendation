@@ -9,7 +9,7 @@ Author: Haidong Zhang
 Date: April 16, 2016
 '''
 
-from graphicalrecommender import Recommender
+from GraphicalRecommender import Recommender
 import numpy as np
 from numpy import log, sqrt
 from scipy.sparse import dok_matrix

@@ -1,7 +1,7 @@
 #!usr/bin/evn python
 #coding:utf-8
 
-from graphicalrecommender import Recommender
+from GraphicalRecommender import Recommender
 from scipy.sparse import dok_matrix
 import numpy as np
 from numpy import newaxis

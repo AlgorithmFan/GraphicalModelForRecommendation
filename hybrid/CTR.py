@@ -10,9 +10,12 @@ from scipy.sparse import dok_matrix
 import numpy as np
 from util import normalize
 
+
 class CTR(Recommender):
-    def __init__(self, trainMatrix, testMatrix, configHandler):
-        super.__init__(trainMatrix, testMatrix, configHandler)
+    def __init__(self, train_matrix, test_matrix, config_handler):
+        super.__init__(train_matrix, test_matrix, config_handler)
+
+
 
     def initModel(self):
         ''''''
@@ -40,8 +43,6 @@ class CTR(Recommender):
 
 
         # Update theta
-
-
 
 
     def predict(self):

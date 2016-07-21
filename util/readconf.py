@@ -12,7 +12,11 @@ class ReadConfig:
         return self.cf.get(section, key)
 
     def get_parameter_int(self, section, key):
-        return int(self.get_parameters_string(section, key))
+        return int(self.get_parameter_string(section, key))
 
     def get_parameter_float(self, section, key):
-        return float(self.get_parameters_string(section, key))
+        return float(self.get_parameter_string(section, key))
+
+    def get_parameter_bool(self, section, key):
+        return bool(self.get_parameter_int(section, key))
+

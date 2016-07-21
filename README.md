@@ -17,5 +17,7 @@ Kalman Filter
 http://link.springer.com/article/10.1186/1687-1847-2012-172#Abs1
 
 
-
 https://www.cs.princeton.edu/~blei/topicmodeling.html
+
+Stochastic gradient descent
+https://en.wikipedia.org/wiki/Stochastic_gradient_descent

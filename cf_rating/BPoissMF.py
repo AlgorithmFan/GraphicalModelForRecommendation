@@ -10,7 +10,7 @@ Author: Haidong Zhang
 Date: April 24, 2016
 '''
 
-from graphicalrecommender import Recommender
+from GraphicalRecommender import Recommender
 import numpy as np
 from scipy.sparse import dok_matrix
 from util import normalize
