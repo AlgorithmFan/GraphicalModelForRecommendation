@@ -8,6 +8,7 @@ Reference paper: Salakhutdinov and Mnih, <strong>Bayesian Probabilistic Matrix F
 import numpy as np
 from GraphicalRecommender import Recommender
 from util.NormalWishartDistribution import NormalWishartDistribution
+from scipy.sparse import dok_matrix
 
 
 class BayesianProbabilisticMatrixFactorization(Recommender):
@@ -41,11 +42,18 @@ class BayesianProbabilisticMatrixFactorization(Recommender):
         self.user_num, self.item_num = self.train_matrix.shape
         self.mean_rating = np.mean(self.train_matrix.values())
 
+        self.predictions = dok_matrix((self.user_num, self.item_num))
+
         if self.config_handler.get_parameter_bool('Parameters', 'is_init_path'):
             self._load_init_model()
         else:
             self.user_factors = np.random.normal(0, 1, size=(self.user_num, self.factor_num))
             self.item_factors = np.random.normal(0, 1, size=(self.item_num, self.factor_num))
+
+        self.markov_num = 0
+        validation_rmse, test_rmse = self.__evaluate_epoch__()
+        self.logger['Process'].debug('Epoch {0}: Training RMSE - {1}, Testing RMSE - {2}'.format(0, validation_rmse, test_rmse))
+
 
         self.user_normal_dist_mu0 = np.zeros(self.factor_num, np.float) + self.user_normal_dist_mu0
         self.user_Wishart_dist_W0 = np.eye(self.factor_num)
@@ -54,6 +62,14 @@ class BayesianProbabilisticMatrixFactorization(Recommender):
         self.item_normal_dist_mu0 = np.zeros(self.factor_num, np.float) + self.item_normal_dist_mu0
         self.item_Wishart_dist_W0 = np.eye(self.factor_num)
         self.item_Wishart_dist_nu0 = self.factor_num
+
+        self.user_train_matrix = dict()
+        self.item_train_matrix = dict()
+        for user_id, item_id in self.train_matrix.keys():
+            self.user_train_matrix.setdefault(user_id, dok_matrix((1, self.item_num)))
+            self.user_train_matrix[user_id][0, item_id] = self.train_matrix.get((user_id, item_id))
+            self.item_train_matrix.setdefault(item_id, dok_matrix((1, self.user_num)))
+            self.item_train_matrix[item_id][0, user_id] = self.train_matrix.get((user_id, item_id))
 
     def _build_model(self):
         self.previous_loss = -np.inf
@@ -67,18 +83,18 @@ class BayesianProbabilisticMatrixFactorization(Recommender):
                                               self.item_Wishart_dist_nu0, self.item_Wishart_dist_W0)
 
             self.logger['Process'].debug('Epoch {0}: update latent factors'.format(iteration))
-            for gibbs_iteration in range(2):
+            for gibbs_iteration in range(4):
                 for user_id in range(self.user_num):
-                    self.logger['Process'].debug('Epoch {0}: update user {1} latent factors'.format(iteration, user_id))
-                    user_ratings = self.train_matrix.getrow(user_id)
+                    # self.logger['Process'].debug('Epoch {0}: update user {1} latent factors'.format(iteration, user_id))
+                    user_ratings = self.user_train_matrix[user_id] if user_id in self.user_train_matrix else dict()
                     if len(user_ratings.keys()) == 0:
                         continue
                     self.user_factors[user_id] = self._update_parameters(
                         self.item_factors, user_ratings, user_factors_mu, user_factors_variance)
 
                 for item_id in range(self.item_num):
-                    self.logger['Process'].debug('Epoch {0}: update item {1} latent factors'.format(iteration, item_id))
-                    item_ratings = self.train_matrix.getcol(item_id)
+                    # self.logger['Process'].debug('Epoch {0}: update item {1} latent factors'.format(iteration, item_id))
+                    item_ratings = self.item_train_matrix[item_id] if item_id in self.item_train_matrix else dict()
                     if len(item_ratings.keys()) == 0:
                         continue
                     self.item_factors[item_id] = self._update_parameters(
@@ -139,6 +155,13 @@ class BayesianProbabilisticMatrixFactorization(Recommender):
         mu = np.dot(sigma_inv, mu_right)
         mu = np.reshape(mu, newshape=(mu.shape[0], ))
         return np.random.multivariate_normal(mu, sigma_inv)
+
+    def _recommend(self):
+
+        for user_id, item_id in self.test_matrix.keys():
+            predict_rating = self._predict(user_id, item_id) + self.predictions[user_id, item_id] * self.markov_num
+            self.predictions[user_id, item_id] = predict_rating / (self.markov_num + 1)
+        self.markov_num += 1
 
     def _predict(self, user_id, item_id, time_id=0):
         predict_rating = np.dot(self.user_factors[user_id, :], self.item_factors[item_id, :]) + self.mean_rating

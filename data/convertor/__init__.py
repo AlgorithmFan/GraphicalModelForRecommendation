@@ -9,6 +9,7 @@ sys.path.insert(0, parent_dir)
 from scipy.sparse import dok_matrix
 from util.dateconvert import DateConvertor
 from data.sparsetensor import SparseTensor
+# from data.sparsematrix import SparseMatrix
 import codecs
 import re
 import numpy as np
@@ -135,3 +136,9 @@ if __name__ == '__main__':
     print 'the number of items is {0}'.format(data_model.shape[1])
     print 'the number of times is {0}'.format(data_model.shape[2])
     print 'the number of records is {0}'.format(len(data_model.keys()))
+
+    data_matrix = convertor.tensor_matrix(data_model)
+    print 'the number of users is {0}'.format(data_matrix.shape[0])
+    print 'the number of items is {0}'.format(data_matrix.shape[1])
+    print 'the number of records is {0}'.format(len(data_matrix.keys()))
+
