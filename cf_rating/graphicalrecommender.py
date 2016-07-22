@@ -34,8 +34,7 @@ class Recommender:
 
     def _init_model(self):
         self.user_num, self.item_num = self.train_matrix.shape
-        self.record_num = len(self.train_matrix.keys())
-        self.rating_mean = self.train_matrix.sum() / self.record_num
+        self.mean_rating = np.mean(self.train_matrix.values())
 
         self.predictions = dok_matrix((self.user_num, self.item_num))
 
@@ -93,12 +92,18 @@ class Recommender:
             self.logger['Process'].debug('The {0}-th experiment'.format(iteration))
             self.logger['Process'].debug('Split the dataset.')
             self.train_tensor, self.test_tensor = self.splitter.get_given_n_by_time(iteration, time_num-experiment_num)
+            self.logger['Result'].debug('The number of user-item pair in the train dataset is {0}'.format(len(self.train_tensor.keys())))
+            self.logger['Result'].debug('The number of user-item pair in the test dataset is {0}'.format(len(self.test_tensor.keys())))
+
             self.logger['Process'].debug('Initialize the model parameters.')
             self._init_model()
+
             self.logger['Process'].debug('Build the model.')
             self._build_model()
+
             self.logger['Process'].debug('Prediction.')
             self._recommend()
+
             self.logger['Process'].debug('Evaluation.')
             result = self._evaluate()
 

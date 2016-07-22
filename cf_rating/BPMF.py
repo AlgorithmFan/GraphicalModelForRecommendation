@@ -25,18 +25,24 @@ class BayesianProbabilisticMatrixFactorization(Recommender):
 
         self.user_normal_dist_mu0 = self.config_handler.get_parameter_float('Parameters', 'user_normal_dist_mu0')
         self.user_normal_dist_beta0 = self.config_handler.get_parameter_float('Parameters', 'user_normal_dist_beta0')
+        self.user_Wishart_dist_W0 = self.config_handler.get_parameter_float('Parameters', 'user_Wishart_dist_W0')
 
         self.item_normal_dist_mu0 = self.config_handler.get_parameter_float('Parameters', 'item_normal_dist_mu0')
         self.item_normal_dist_beta0 = self.config_handler.get_parameter_float('Parameters', 'item_normal_dist_beta0')
+        self.item_Wishart_dist_W0 = self.config_handler.get_parameter_float('Parameters', 'item_Wishart_dist_W0')
 
         self.rating_sigma = self.config_handler.get_parameter_float('Parameters', 'rating_sigma')
 
         self.logger['Result'].debug('max_iterations: {0}'.format(self.max_iterations))
         self.logger['Result'].debug('factor_num: {0}'.format(self.factor_num))
+
         self.logger['Result'].debug('user_normal_dist_mu0: {0}'.format(self.user_normal_dist_mu0))
         self.logger['Result'].debug('user_normal_dist_beta0: {0}'.format(self.user_normal_dist_beta0))
+        self.logger['Result'].debug('user_Wishart_dist_W0: {0}'.format(self.user_Wishart_dist_W0))
+
         self.logger['Result'].debug('item_normal_dist_mu0: {0}'.format(self.item_normal_dist_mu0))
         self.logger['Result'].debug('item_normal_dist_beta0: {0}'.format(self.item_normal_dist_beta0))
+        self.logger['Result'].debug('item_Wishart_dist_W0: {0}'.format(self.item_Wishart_dist_W0))
 
     def _init_model(self):
         self.user_num, self.item_num = self.train_matrix.shape
@@ -56,11 +62,11 @@ class BayesianProbabilisticMatrixFactorization(Recommender):
 
 
         self.user_normal_dist_mu0 = np.zeros(self.factor_num, np.float) + self.user_normal_dist_mu0
-        self.user_Wishart_dist_W0 = np.eye(self.factor_num)
+        self.user_Wishart_dist_W0 = np.eye(self.factor_num) * self.user_Wishart_dist_W0
         self.user_Wishart_dist_nu0 = self.factor_num
 
         self.item_normal_dist_mu0 = np.zeros(self.factor_num, np.float) + self.item_normal_dist_mu0
-        self.item_Wishart_dist_W0 = np.eye(self.factor_num)
+        self.item_Wishart_dist_W0 = np.eye(self.factor_num) * self.item_Wishart_dist_W0
         self.item_Wishart_dist_nu0 = self.factor_num
 
         self.user_train_matrix = dict()
@@ -83,9 +89,8 @@ class BayesianProbabilisticMatrixFactorization(Recommender):
                                               self.item_Wishart_dist_nu0, self.item_Wishart_dist_W0)
 
             self.logger['Process'].debug('Epoch {0}: update latent factors'.format(iteration))
-            for gibbs_iteration in range(4):
+            for gibbs_iteration in range(10):
                 for user_id in range(self.user_num):
-                    # self.logger['Process'].debug('Epoch {0}: update user {1} latent factors'.format(iteration, user_id))
                     user_ratings = self.user_train_matrix[user_id] if user_id in self.user_train_matrix else dict()
                     if len(user_ratings.keys()) == 0:
                         continue
@@ -93,7 +98,6 @@ class BayesianProbabilisticMatrixFactorization(Recommender):
                         self.item_factors, user_ratings, user_factors_mu, user_factors_variance)
 
                 for item_id in range(self.item_num):
-                    # self.logger['Process'].debug('Epoch {0}: update item {1} latent factors'.format(iteration, item_id))
                     item_ratings = self.item_train_matrix[item_id] if item_id in self.item_train_matrix else dict()
                     if len(item_ratings.keys()) == 0:
                         continue
@@ -102,8 +106,7 @@ class BayesianProbabilisticMatrixFactorization(Recommender):
 
                 validation_rmse, test_rmse = self.__evaluate_epoch__()
                 self.logger['Process'].debug('Epoch {0}: Training RMSE - {1}, Testing RMSE - {2}'.format(iteration, validation_rmse, test_rmse))
-            # if self._is_converged():
-            #     break
+
 
     def __evaluate_epoch__(self):
         validation_rmse = 0.0
@@ -157,7 +160,6 @@ class BayesianProbabilisticMatrixFactorization(Recommender):
         return np.random.multivariate_normal(mu, sigma_inv)
 
     def _recommend(self):
-
         for user_id, item_id in self.test_matrix.keys():
             predict_rating = self._predict(user_id, item_id) + self.predictions[user_id, item_id] * self.markov_num
             self.predictions[user_id, item_id] = predict_rating / (self.markov_num + 1)
@@ -177,12 +179,14 @@ class BayesianProbabilisticMatrixFactorization(Recommender):
         time_num = self.splitter.data_model.shape[2]
         for iteration in range(experiment_num):
             self.experiment = iteration
-            self.logger['Process'].debug('#'*50)
+            self.logger['Result'].debug('#'*50)
             self.logger['Process'].debug('The {0}-th experiment'.format(iteration))
             self.logger['Process'].debug('Split the dataset.')
             self.train_tensor, self.test_tensor = self.splitter.get_given_n_by_time(iteration, time_num-experiment_num)
             self.train_matrix = self.convertor.tensor_matrix(self.train_tensor)
             self.test_matrix = self.convertor.tensor_matrix(self.test_tensor)
+            self.logger['Result'].debug('The number of user-item pairs in train set is {0}'.format(len(self.train_matrix.keys())))
+            self.logger['Result'].debug('The number of user-item pairs in test set is {0}'.format(len(self.test_matrix.keys())))
 
             self.logger['Process'].debug('Initialize the model parameters.')
             self._init_model()
