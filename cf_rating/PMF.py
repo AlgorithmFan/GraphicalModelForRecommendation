@@ -7,62 +7,60 @@ Reference paper: https://papers.nips.cc/paper/3208-probabilistic-matrix-factoriz
     momentum: https://en.wikipedia.org/wiki/Stochastic_gradient_descent
 """
 
+import codecs
 import numpy as np
+from scipy.sparse import dok_matrix
 from random import shuffle
 from GraphicalRecommender import Recommender
 
 
 class ProbabilisticMatrixFactorization(Recommender):
-    def __init__(self, config_handler):
-        Recommender.__init__(self, config_handler)
-        # DataModel.__init__(self, config_handler)
-
-    def _read_config(self):
-        self.dataset_file = self.config_handler.get_parameter_string('Dataset', 'ratings')
-        self.max_iterations = self.config_handler.get_parameter_int('Parameters', 'max_iterations')
-        self.factor_num = self.config_handler.get_parameter_int('Parameters', 'factor_num')
-        self.learn_rate = self.config_handler.get_parameter_float('Parameters', 'learn_rate')
-        self.momentum = self.config_handler.get_parameter_float('Parameters', 'momentum')
-        self.user_lambda = self.config_handler.get_parameter_float('Parameters', 'user_lambda')
-        self.item_lambda = self.config_handler.get_parameter_float('Parameters', 'item_lambda')
-        self.stop_threshold = self.config_handler.get_parameter_float('Parameters', 'stop_threshold')
-        self.batch_num = self.config_handler.get_parameter_int('Parameters', 'batch_num')
-        self.is_save = self.config_handler.get_parameter_bool('Output', 'is_save')
-        self.is_load = self.config_handler.get_parameter_bool('Output', 'is_load')
-
-        self.logger['Result'].debug('max_iterations: {0}'.format(self.max_iterations))
-        self.logger['Result'].debug('factor_num: {0}'.format(self.factor_num))
-        self.logger['Result'].debug('user_lambda: {0}'.format(self.user_lambda))
-        self.logger['Result'].debug('item_lambda: {0}'.format(self.item_lambda))
-        self.logger['Result'].debug('learn_rate: {0}'.format(self.learn_rate))
-        self.logger['Result'].debug('batch_num: {0}'.format(self.batch_num))
-        self.logger['Result'].debug('momentum: {0}'.format(self.momentum))
+    def __init__(self, recommender_context):
+        Recommender.__init__(self, recommender_context)
 
     def _init_model(self):
         self.user_num, self.item_num = self.train_matrix.shape
-        self.record_num = len(self.train_matrix.keys())
-        self.rating_mean = self.train_matrix.sum() / self.record_num
+        self.rating_mean = np.mean(self.train_matrix.values())
+        self.predictions = dok_matrix((self.user_num, self.item_num))
 
-        if self.is_load:
+        if self.config_handler['Output', 'is_load', 'bool']:
             self._load_model()
+            assert(self.user_factors.shape[1] == self.item_factors.shape[1])
+            self.factor_num = self.user_factors.shape[1]
         else:
+            self.factor_num = self.config_handler['Parameters', 'factor_num', 'int']
             self.user_factors = np.random.normal(0, 1, size=(self.user_num, self.factor_num)) * 0.1
             self.item_factors = np.random.normal(0, 1, size=(self.item_num, self.factor_num)) * 0.1
+
+            # Other Parameters
+            self.learn_rate = self.config_handler['Parameters', 'learn_rate', 'float']
+            self.momentum = self.config_handler['Parameters', 'momentum', 'float']
+            self.user_lambda = self.config_handler['Parameters', 'user_lambda', 'float']
+            self.item_lambda = self.config_handler['Parameters', 'item_lambda', 'float']
+
+        # Momentum for update factors
         self.user_factors_inc = np.zeros((self.user_num, self.factor_num))
         self.item_factors_inc = np.zeros((self.item_num, self.factor_num))
 
     def _build_model(self):
-        losses = list()
-        index = np.arange(self.record_num)
-        user_item = self.train_matrix.keys()
-        users = np.array([user_id for user_id, item_id in user_item])
-        items = np.array([item_id for user_id, item_id in user_item])
+
+        user_item_keys = self.train_matrix.keys()
+        users = np.array([user_id for user_id, item_id in user_item_keys])
+        items = np.array([item_id for user_id, item_id in user_item_keys])
         ratings = np.array(self.train_matrix.values())
-        batch_size = int(self.record_num / self.batch_num)
-        for iteration in range(self.max_iterations):
+
+        # get the index of user_item_keys for stostic
+        index = np.arange(len(user_item_keys))
+        batch_size = self.config_handler.get_parameter_int('Parameters', 'batch_size')
+        batch_num = int(float(len(index)) / batch_size)
+
+        # building model
+        losses = list()
+        max_iterations = self.config_handler.get_parameter_int('Parameters', 'max_iterations')
+        for iteration in range(max_iterations):
             shuffle(index)
 
-            for batch_id in range(self.batch_num):
+            for batch_id in range(batch_num):
                 batch_index = index[batch_id*batch_size:(batch_id+1)*batch_size]
                 batch_users = users[batch_index]
                 batch_items = items[batch_index]
@@ -112,34 +110,13 @@ class ProbabilisticMatrixFactorization(Recommender):
                 self.logger['Process'].debug("Epoch {0} batch {1}: Training RMSE - {2}, Testing RMSE - {3}".format(
                     iteration, batch_id, losses[-1], result['RMSE']))
 
-    def _run_time_sequence_algorithm(self):
-        experiment_num = self.config_handler.get_parameter_int("Dataset", "experiment_num")
-        time_num = self.splitter.data_model.shape[2]
-        for iteration in range(experiment_num):
-            self.experiment = iteration
-            self.logger['Process'].debug('#'*50)
-            self.logger['Process'].debug('The {0}-th experiment'.format(iteration))
-            self.logger['Process'].debug('Split the dataset.')
-            self.train_tensor, self.test_tensor = self.splitter.get_given_n_by_time(iteration, time_num-experiment_num)
-            self.train_matrix = self.convertor.tensor_matrix(self.train_tensor)
-            self.test_matrix = self.convertor.tensor_matrix(self.test_tensor)
-
-            self.logger['Process'].debug('Initialize the model parameters.')
-            self._init_model()
-
-            self.logger['Process'].debug('Build the model.')
-            self._build_model()
-
-            self.logger['Process'].debug('Save model')
-            if self.is_save:
-                self._save_model()
-
-            self.logger['Process'].debug('Prediction.')
-            self._recommend()
-            self.logger['Process'].debug('Evaluation.')
-            result = self._evaluate()
-            for key in result:
-                self.logger['Result'].debug("{0}: {1} {2}".format(iteration, key, result[key]))
+    def _save_result(self, result):
+        self.logger['Result'].debug('factor_num: {0}'.format(self.factor_num))
+        self.logger['Result'].debug('learn_rate: {0}'.format(self.learn_rate))
+        self.logger['Result'].debug('user_lambda: {0}'.format(self.user_lambda))
+        self.logger['Result'].debug('item_lambda: {0}'.format(self.item_lambda))
+        self.logger['Result'].debug('momentum: {0}'.format(self.momentum))
+        Recommender._save_result(self, result)
 
     def _predict(self, user_id, item_id, time_id=0):
         predict_rating = np.dot(self.user_factors[user_id, :], self.item_factors[item_id, :]) + self.rating_mean
@@ -149,3 +126,40 @@ class ProbabilisticMatrixFactorization(Recommender):
             return 1
         else:
             return predict_rating
+
+    def _save_model(self):
+        save_path = self.config_handler.get_parameter_string("Output", "save_path")
+        save_file = save_path + "PMF_{0}.txt".format(self.recommender_context.experiment_id)
+
+        with codecs.open(save_file, mode='w', encoding='utf-8') as write_fp:
+            write_fp.write('factor_num: {0}\n'.format(self.factor_num))
+            write_fp.write('learn_rate: {0}\n'.format(self.learn_rate))
+            write_fp.write('user_lambda: {0}\n'.format(self.user_lambda))
+            write_fp.write('item_lambda: {0}\n'.format(self.item_lambda))
+            write_fp.write('momentum: {0}\n'.format(self.momentum))
+            write_fp.write('user_factors \n')
+            self._save_matrix(self.user_factors, write_fp)
+
+            write_fp.write('item_factors \n')
+            self._save_matrix(self.item_factors, write_fp)
+
+    def _load_model(self):
+        load_path = self.config_handler.get_parameter_string("Output", "load_path")
+        load_file = load_path + "PMF_{0}.txt".format(self.recommender_context.experiment_id)
+
+        with codecs.open(load_file, mode='r', encoding='utf-8') as read_fp:
+            for line in read_fp:
+                if line.startswith('factor_num'):
+                    self.factor_num = int(line.split(':')[1].strip())
+                elif line.startswith('learn_rate'):
+                    self.learn_rate = float(line.split(':')[1].strip())
+                elif line.startswith('user_lambda'):
+                    self.user_lambda = float(line.split(':')[1].strip())
+                elif line.startswith('item_lambda'):
+                    self.item_lambda = float(line.split(':')[1].strip())
+                elif line.startswith('momentum'):
+                    self.momentum = float(line.split(':')[1].strip())
+                elif line.startswith('user_factor'):
+                    self.user_factors = self._load_matrix(read_fp)
+                elif line.startswith('item_factor'):
+                    self.item_factors = self._load_matrix(read_fp)

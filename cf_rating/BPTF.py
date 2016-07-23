@@ -8,6 +8,7 @@ Reference Code: https://www.cs.cmu.edu/~lxiong/bptf/bptf.html
 """
 
 import numpy as np
+import codecs
 from scipy.sparse import dok_matrix
 from GraphicalRecommender import Recommender
 from util.NormalWishartDistribution import NormalWishartDistribution
@@ -17,67 +18,67 @@ class BayesianProbabilisticTensorFactorization(Recommender):
     def __init__(self, config_handler):
         Recommender.__init__(self, config_handler)
 
-    def _read_config(self):
-        self.max_iterations = self.config_handler.get_parameter_int('Parameters', 'max_iterations')
-        self.factor_num = self.config_handler.get_parameter_int('Parameters', 'factor_num')
+    def _read_cfg(self):
 
-        self.user_normal_dist_mu0 = self.config_handler.get_parameter_float('Parameters', 'user_normal_dist_mu0')
-        self.user_normal_dist_beta0 = self.config_handler.get_parameter_float('Parameters', 'user_normal_dist_beta0')
-        self.user_Wishart_dist_W0 = self.config_handler.get_parameter_float('Parameters', 'user_Wishart_dist_W0')
+        self.user_normal_dist_mu0_init = self.config_handler['Parameters', 'user_normal_dist_mu0', 'float']
+        self.user_normal_dist_beta0_init = self.config_handler['Parameters', 'user_normal_dist_beta0', 'float']
+        self.user_Wishart_dist_W0_init = self.config_handler['Parameters', 'user_Wishart_dist_W0', 'float']
 
-        self.item_normal_dist_mu0 = self.config_handler.get_parameter_float('Parameters', 'item_normal_dist_mu0')
-        self.item_normal_dist_beta0 = self.config_handler.get_parameter_float('Parameters', 'item_normal_dist_beta0')
-        self.item_Wishart_dist_W0 = self.config_handler.get_parameter_float('Parameters', 'item_Wishart_dist_W0')
+        self.item_normal_dist_mu0_init = self.config_handler['Parameters', 'item_normal_dist_mu0', 'float']
+        self.item_normal_dist_beta0_init = self.config_handler['Parameters', 'item_normal_dist_beta0', 'float']
+        self.item_Wishart_dist_W0_init = self.config_handler['Parameters', 'item_Wishart_dist_W0', 'float']
 
-        self.time_normal_dist_mu0 = self.config_handler.get_parameter_float('Parameters', 'time_normal_dist_mu0')
-        self.time_normal_dist_beta0 = self.config_handler.get_parameter_float('Parameters', 'time_normal_dist_beta0')
-        self.time_Wishart_dist_W0 = self.config_handler.get_parameter_float('Parameters', 'time_Wishart_dist_W0')
+        self.time_normal_dist_mu0_init = self.config_handler['Parameters', 'time_normal_dist_mu0', 'float']
+        self.time_normal_dist_beta0_init = self.config_handler['Parameters', 'time_normal_dist_beta0', 'float']
+        self.time_Wishart_dist_W0_init = self.config_handler['Parameters', 'time_Wishart_dist_W0', 'float']
 
-        self.rating_sigma = self.config_handler.get_parameter_float('Parameters', 'rating_sigma')
-
-        self.logger['Result'].debug('max_iterations: {0}'.format(self.max_iterations))
-        self.logger['Result'].debug('factor_num: {0}'.format(self.factor_num))
-
-        self.logger['Result'].debug('user_normal_dist_mu0: {0}'.format(self.user_normal_dist_mu0))
-        self.logger['Result'].debug('user_normal_dist_beta0: {0}'.format(self.user_normal_dist_beta0))
-        self.logger['Result'].debug('user_Wishart_dist_W0: {0}'.format(self.user_Wishart_dist_W0))
-
-        self.logger['Result'].debug('item_normal_dist_mu0: {0}'.format(self.item_normal_dist_mu0))
-        self.logger['Result'].debug('item_normal_dist_beta0: {0}'.format(self.item_normal_dist_beta0))
-        self.logger['Result'].debug('item_Wishart_dist_W0: {0}'.format(self.item_Wishart_dist_W0))
-
-        self.logger['Result'].debug('time_normal_dist_mu0: {0}'.format(self.time_normal_dist_mu0))
-        self.logger['Result'].debug('time_normal_dist_beta0: {0}'.format(self.time_normal_dist_beta0))
-        self.logger['Result'].debug('time_Wishart_dist_W0: {0}'.format(self.time_Wishart_dist_W0))
-
-        self.logger['Result'].debug('rating_sigma: {0}'.format(self.rating_sigma))
+        self.rating_sigma_init = self.config_handler['Parameters', 'rating_sigma', 'float']
 
     def _init_model(self):
-
         self.user_num, self.item_num, self.time_num = self.train_tensor.shape()
         self.mean_rating = np.mean(self.train_tensor.values())
 
         self.predictions = dok_matrix((self.user_num, self.item_num, self.time_num))
 
+        if self.config_handler['Parameters', 'is_load', 'bool']:
+            self._load_model()
+            assert(self.user_factors.shape[1] == self.item_factors.shape[1] and self.item_factors.shape[1] == self.time_factors.shape[1])
+            self.factor_num = self.user_factors.shape[1]
+        else:
+            self._read_cfg()
+
         # initialize the latent factors of user, item and time.
-        self.user_factors = np.random.normal(0, 1, size=(self.user_num, self.factor_num))
-        self.item_factors = np.random.normal(0, 1, size=(self.item_num, self.factor_num))
+        if self.config_handler['Parameters', 'is_init_path', 'bool']:
+            self._load_init_model()
+        else:
+            self.factor_num = self.config_handler['Parameters', 'factor_num', 'int']
+            self.user_factors = np.random.normal(0, 1, size=(self.user_num, self.factor_num))
+            self.item_factors = np.random.normal(0, 1, size=(self.item_num, self.factor_num))
         self.time_factors = np.random.normal(0, 1, size=(self.time_num, self.factor_num))
 
+        self.markov_num = 0
+        validation_rmse, test_rmse = self.__evaluate_epoch__()
+        self.logger['Process'].debug('Epoch {0}: Training RMSE - {1}, Testing RMSE - {2}'.format(0, validation_rmse, test_rmse))
+
         # get the user parameters
-        self.user_normal_dist_mu0 = np.zeros(self.factor_num, np.float) + self.user_normal_dist_mu0
-        self.user_Wishart_dist_W0 = np.eye(self.factor_num) * self.user_Wishart_dist_W0
+        self.user_normal_dist_mu0 = np.zeros(self.factor_num, np.float) + self.user_normal_dist_mu0_init
+        self.user_normal_dist_beta0 = self.user_normal_dist_beta0_init
+        self.user_Wishart_dist_W0 = np.eye(self.factor_num) * self.user_Wishart_dist_W0_init
         self.user_Wishart_dist_nu0 = self.factor_num
 
         # get the item parameters
-        self.item_normal_dist_mu0 = np.zeros(self.factor_num, np.float) + self.item_normal_dist_mu0
-        self.item_Wishart_dist_W0 = np.eye(self.factor_num) * self.item_Wishart_dist_W0
+        self.item_normal_dist_mu0 = np.zeros(self.factor_num, np.float) + self.item_normal_dist_mu0_init
+        self.item_normal_dist_beta0 = self.item_normal_dist_beta0_init
+        self.item_Wishart_dist_W0 = np.eye(self.factor_num) * self.item_Wishart_dist_W0_init
         self.item_Wishart_dist_nu0 = self.factor_num
 
         # get the time parameters
-        self.time_normal_dist_mu0 = np.zeros(self.factor_num, np.float) + self.time_normal_dist_mu0
-        self.time_Wishart_dist_W0 = np.eye(self.factor_num) * self.time_Wishart_dist_W0
+        self.time_normal_dist_mu0 = np.zeros(self.factor_num, np.float) + self.time_normal_dist_mu0_init
+        self.time_normal_dist_beta0 = self.time_normal_dist_beta0_init
+        self.time_Wishart_dist_W0 = np.eye(self.factor_num) * self.time_Wishart_dist_W0_init
         self.time_Wishart_dist_nu0 = self.factor_num
+
+        self.rating_sigma = self.rating_sigma_init
 
     def _build_model(self):
 
@@ -93,7 +94,8 @@ class BayesianProbabilisticTensorFactorization(Recommender):
             train_matrix_by_time.setdefault(time_id, dok_matrix((self.user_num, self.item_num)))
             train_matrix_by_time[time_id][user_id, item_id] = self.train_tensor[user_id, item_id, time_id]
 
-        for iteration in range(self.max_iterations):
+        max_iterations = self.config_handler['Parameters', 'max_iterations', 'int']
+        for iteration in range(max_iterations):
             user_factors_mu, user_factors_variance = \
                 self._sampling_hyperparameters(self.user_factors, self.user_normal_dist_mu0, self.user_normal_dist_beta0,
                                                self.user_Wishart_dist_nu0, self.user_Wishart_dist_W0)
@@ -105,7 +107,7 @@ class BayesianProbabilisticTensorFactorization(Recommender):
                 self._sampling_time_hyperparameters(self.time_factors, self.time_normal_dist_mu0, self.time_normal_dist_beta0,
                                                     self.time_Wishart_dist_nu0, self.time_Wishart_dist_W0)
 
-            for gibbs_iteration in range(10):
+            for gibbs_iteration in range(2):
                 for user_id in range(self.user_num):
                     item_time_matrix = train_matrix_by_user[user_id]
                     if len(item_time_matrix.keys()) < 1:
@@ -129,6 +131,36 @@ class BayesianProbabilisticTensorFactorization(Recommender):
 
                 validation_rmse, test_rmse = self.__evaluate_epoch__()
                 self.logger['Process'].debug('Epoch {0}: Training RMSE - {1}, Testing RMSE - {2}'.format(iteration, validation_rmse, test_rmse))
+
+    def run(self):
+        self.logger['Process'].debug('Get the train dataset')
+        self.train_tensor = self.recommender_context.get_data_model().get_data_splitter().get_train_data()
+        self.logger['Result'].debug('The number of user-item pair in train dataset is {0}'.format(len(self.train_tensor.keys())))
+
+        self.logger['Process'].debug('Get the test dataset')
+        self.test_tensor = self.recommender_context.get_data_model().get_data_splitter().get_test_data()
+        self.logger['Result'].debug('The number of user-item pair in test dataset is {0}'.format(len(self.test_tensor.keys())))
+
+        self.logger['Process'].debug('Initialize the model parameters')
+        self._init_model()
+
+        self.logger['Process'].debug('Building model....')
+        self._build_model()
+
+        is_save = self.config_handler['Output', 'is_save', 'bool']
+        if is_save:
+            self.logger['Process'].debug('Save model ....')
+            self._save_model()
+
+        self.logger['Process'].debug('Recommending ...')
+        self._recommend()
+
+        self.logger['Process'].debug('Evaluating ...')
+        result = self._evaluate()
+        self._save_result(result)
+
+        self.logger['Process'].debug("Finish.")
+        self.logger['Process'].debug("#"*50)
 
     def __evaluate_epoch__(self):
         validation_rmse = 0.0
@@ -184,7 +216,6 @@ class BayesianProbabilisticTensorFactorization(Recommender):
 
     def _update_parameters(self, factors0, factors1, ratings, factors_mu, factors_variance):
         """
-
         :param factors0:
         :param factors1:
         :param ratings:
@@ -236,3 +267,34 @@ class BayesianProbabilisticTensorFactorization(Recommender):
             return 1
         else:
             return predict_rating
+
+    def _save_result(self, result):
+        self.logger['Result'].debug('factor_num: {0}'.format(self.factor_num))
+
+        self.logger['Result'].debug('user_normal_dist_mu0: {0}'.format(self.user_normal_dist_mu0_init))
+        self.logger['Result'].debug('user_normal_dist_beta0: {0}'.format(self.user_normal_dist_beta0_init))
+        self.logger['Result'].debug('user_Wishart_dist_W0: {0}'.format(self.user_Wishart_dist_W0_init))
+
+        self.logger['Result'].debug('item_normal_dist_mu0: {0}'.format(self.item_normal_dist_mu0_init))
+        self.logger['Result'].debug('item_normal_dist_beta0: {0}'.format(self.item_normal_dist_beta0_init))
+        self.logger['Result'].debug('item_Wishart_dist_W0: {0}'.format(self.item_Wishart_dist_W0_init))
+
+        self.logger['Result'].debug('time_normal_dist_mu0: {0}'.format(self.time_normal_dist_mu0_init))
+        self.logger['Result'].debug('time_normal_dist_beta0: {0}'.format(self.time_normal_dist_beta0_init))
+        self.logger['Result'].debug('time_Wishart_dist_W0: {0}'.format(self.time_Wishart_dist_W0_init))
+
+        self.logger['Result'].debug('rating_sigma: {0}'.format(self.rating_sigma_init))
+        Recommender._save_result(self, result)
+
+    def _load_init_model(self):
+        load_path = self.config_handler["Output", "load_path", "string"]
+        load_file = load_path + "PMF_{0}.txt".format(self.recommender_context.experiment_id)
+
+        with codecs.open(load_file, mode='r', encoding='utf-8') as read_fp:
+            for line in read_fp:
+                if line.startswith('factor_num'):
+                    self.factor_num = int(line.split(':')[1].strip())
+                elif line.startswith('user_factor'):
+                    self.user_factors = self._load_matrix(read_fp)
+                elif line.startswith('item_factor'):
+                    self.item_factors = self._load_matrix(read_fp)
